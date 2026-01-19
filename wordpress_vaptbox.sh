@@ -9,9 +9,9 @@ reset="\033[0m" # Reset color to default
 clear
 echo -e "\n"
 
-toilet -F metal -f mini "EMPOWER YOUR SKILL " | lolcat
-toilet -F metal -f mini "WITH THE TRIDENT OF" | lolcat
-toilet -F metal -f mini "KNOWLEDGE ..." | lolcat
+toilet -F metal -f mini "LOADING " | lolcat
+toilet -F metal -f mini "WORDPRESS VAPTBOX" | lolcat
+toilet -F metal -f mini "BY VISHAL CYBER EXPERT ..." | lolcat
 espeak "EMPOWER YOUR SKILL. WITH, THE TRIDENT OF KNOWLEDGE!" >/dev/null 2>&1
 sleep 8
 clear
