@@ -65,8 +65,8 @@ echo -e "\nACTIVATING THE TOOL...." | lolcat
 espeak "ACTIVATING THE TOOL." >/dev/null 2>&1
 sleep 10
 
+#!/bin/bash
 clear
-
 
 # ===== COLORS =====
 red="\033[38;5;196m"
@@ -133,7 +133,7 @@ echo "# ========================="
 echo "# 2. WEB FINGERPRINTING"
 echo "# ========================="
 run "curl -I $TARGET"
-run "whatweb $DOMAIN"
+run "whatweb $TARGET"
 
 # =========================
 # 3. NMAP NETWORK SCANNING
@@ -213,15 +213,15 @@ run "curl $TARGET/wp-json/wp/v2/media"
 echo "# ========================="
 echo "# 8. WPSCAN BASIC ENUMERATION"
 echo "# ========================="
-run "wpscan --url $TARGET --no-update --force"
-run "wpscan --url $TARGET --detection-mode aggressive --no-update --force"
-run "wpscan --url $TARGET --enumerate u --no-update --force"
-run "wpscan --url $TARGET --enumerate p --no-update --force"
-run "wpscan --url $TARGET --enumerate ap --plugins-detection aggressive --no-update --force"
-run "wpscan --url $TARGET --enumerate vp --no-update --force"
-run "wpscan --url $TARGET --enumerate t --no-update --force"
-run "wpscan --url $TARGET --enumerate vt --no-update --force"
-run "wpscan --url $TARGET --enumerate cb,dbe --no-update --force"
+run "wpscan --url $TARGET --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --detection-mode aggressive --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate u --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate p --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate ap --plugins-detection aggressive --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate vp --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate t --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate vt --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate cb,dbe --ignore-main-redirect --no-update --force"
 
 # =========================
 # 9. XMLRPC CHECKS
@@ -230,7 +230,7 @@ echo "# ========================="
 echo "# 9. XMLRPC CHECKS"
 echo "# ========================="
 run "curl -X POST $TARGET/xmlrpc.php"
-run "nmap -p 80,443 --script http-xmlrpc $DOMAIN"
+run "nmap -p 80,443 --script http-wordpress-xmlrpc,http-xmlrpc-brute $DOMAIN"
 
 # =========================
 # 10. NMAP WORDPRESS SCRIPTS
@@ -247,8 +247,8 @@ run "nmap -p 80,443 --script http-wordpress-enum,http-wordpress-users,http-wordp
 echo "# ========================="
 echo "# 11. BRUTE FORCE"
 echo "# ========================="
-run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --no-update --force"
-run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --password-attack xmlrpc --no-update --force"
+run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --password-attack xmlrpc --ignore-main-redirect --no-update --force"
 
 # =========================
 # 12. ADMIN PATHS
@@ -287,16 +287,16 @@ run "nmap -p 80,443 --script http-wordpress-users,http-wordpress-enum,http-confi
 echo "# ========================="
 echo "# 14. FINAL WPSCAN ENUM"
 echo "# ========================="
-run "wpscan --url $TARGET --enumerate v --no-update --force"
-run "wpscan --url $TARGET --enumerate at --themes-detection aggressive --no-update --force"
-run "wpscan --url $TARGET --enumerate u,vp,vt --no-update --force"
-run "wpscan --url $TARGET --enumerate tt --no-update --force"
+run "wpscan --url $TARGET --enumerate v --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate at --themes-detection aggressive --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate u,vp,vt --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --enumerate tt --ignore-main-redirect --no-update --force"
 
-[ -n "$APITOKEN" ] && run "wpscan --url $TARGET --api-token $APITOKEN --no-update --force"
+[ -n "$APITOKEN" ] && run "wpscan --url $TARGET --api-token $APITOKEN --ignore-main-redirect --no-update --force"
 
-run "wpscan --url $TARGET -o $OUTDIR/wpscan.txt --no-update --force"
-run "wpscan --url $TARGET --format json -o $OUTDIR/wpscan.json --no-update --force"
-run "wpscan --url $TARGET --random-user-agent --disable-tls-checks --max-threads $THREADS --no-update --force"
+run "wpscan --url $TARGET -o $OUTDIR/wpscan.txt --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --format json -o $OUTDIR/wpscan.json --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET --random-user-agent --disable-tls-checks --max-threads $THREADS --ignore-main-redirect --no-update --force"
 
 # =========================
 # SUMMARY
