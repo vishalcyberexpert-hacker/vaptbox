@@ -1,3 +1,4 @@
+VAPTBOX is a collection of automated Vulnerability Assessment and Penetration Testing tools for security researchers. It focuses on recon, enumeration, scanning, and exploitation workflows, designed to be modular, extensible, and automation‑friendly for real‑world VAPT.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 **WordPress VAPTBOX – Next-Gen Recon & Enumeration Tool
