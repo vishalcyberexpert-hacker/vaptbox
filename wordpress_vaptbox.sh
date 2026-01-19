@@ -160,6 +160,7 @@ echo "# ========================="
 echo "# 5. DIRECTORY ENUMERATION"
 echo "# ========================="
 run "gobuster dir -u $TARGET -w $WORDLIST -t $THREADS"
+run "gobuster dir -u $TARGET -w $WORDLIST -t $THREADS -b 403"
 run "dirsearch -u $TARGET -w $WORDLIST -t $THREADS"
 
 # =========================
