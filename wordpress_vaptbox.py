@@ -2,22 +2,55 @@
 import os
 import sys
 import time
+import random
 from datetime import datetime
 
+# =========================
+# FULL-SCREEN INTRO ANIMATION (ADDED – 10s)
+# =========================
+w = os.get_terminal_size().columns
+h = os.get_terminal_size().lines
+os.system("clear")
+
+text = " VISHAL CYBER EXPERT "
+pad = (w - len(text)) // 2
+
+start = time.time()
+while time.time() - start < 10:
+    screen = []
+    for i in range(h):
+        if i % 3 == 0:
+            line = (
+                "".join(random.choice("█▓▒░01") for _ in range(pad)) +
+                text +
+                "".join(random.choice("█▓▒░01") for _ in range(w))
+            )
+            screen.append(line[:w])
+        else:
+            screen.append("".join(random.choice("█▓▒░01") for _ in range(w)))
+    print("\n".join(screen))
+    time.sleep(0.05)
+
+# =========================
 # ===== COLORS =====
+# =========================
 green = "\033[38;5;82m"
 yellow = "\033[0;33m"
 blue = "\033[38;5;51m"
 reset = "\033[0m"
 
+# =========================
 # ===== BANNER =====
+# =========================
 os.system("clear")
 os.system("toilet -f mono12 -F metal -W WORDPRESS | lolcat")
 os.system("toilet -f mono12 -F metal -W VAPTBOX | lolcat")
 print(f"{green}NEXT-GEN WORDPRESS VAPT AUTOMATOR{reset}")
 os.system("cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat")
 
+# =========================
 # ===== INPUT =====
+# =========================
 TARGET = input("TARGET (http/https): ").strip()
 WORDLIST = input("DIR WORDLIST [default]: ").strip()
 USERLIST = input("USER WORDLIST [default]: ").strip()
@@ -81,7 +114,7 @@ for u in URLS:
     run(f'curl -s -o /dev/null -w "%{{http_code}} {u}\\n" {TARGET}/{u}')
 
 # =========================
-# 4. DIRECTORY ENUM (FIXED)
+# 4. DIRECTORY ENUM
 # =========================
 run(
     f"gobuster dir -u {TARGET} -w {WORDLIST} -t {THREADS} "
@@ -91,7 +124,7 @@ run(
 run(f"dirsearch -u {TARGET} -w {WORDLIST} -t {THREADS}")
 
 # =========================
-# 5. REST API ENUM (KEPT)
+# 5. REST API ENUM
 # =========================
 run(f"curl {TARGET}/wp-json/wp/v2/users")
 run(f"curl {TARGET}/wp-json/wp/v2/posts")
@@ -120,7 +153,6 @@ run(f"wpscan --url {TARGET} --enumerate u --no-update --force")
 # =========================
 # 8. BRUTE FORCE (DUAL MODE)
 # =========================
-# XMLRPC (KEPT)
 run(
     f"wpscan --url {TARGET} "
     f"--usernames {USERLIST} "
@@ -130,7 +162,6 @@ run(
     f"--no-update --force"
 )
 
-# CLASSIC LOGIN (FALLBACK – ADDED)
 run(
     f"wpscan --url {TARGET} "
     f"--usernames {USERLIST} "
