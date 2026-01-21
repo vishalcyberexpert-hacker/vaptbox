@@ -65,11 +65,9 @@ echo -e "\nACTIVATING THE TOOL...." | lolcat
 espeak "ACTIVATING THE TOOL." >/dev/null 2>&1
 sleep 10
 
-#!/bin/bash
 clear
 
 # ===== COLORS =====
-red="\033[38;5;196m"
 green="\033[38;5;82m"
 yellow="\033[0;33m"
 blue="\033[38;5;51m"
@@ -77,230 +75,113 @@ reset="\033[0m"
 
 toilet -f mono12 -F metal -W WORDPRESS | lolcat
 toilet -f mono12 -F metal -W VAPTBOX | lolcat
-echo -e "${green}NEXT-GEN WORDPRESS RECON & ENUM AUTOMATOR${reset}"
+echo -e "${green}NEXT-GEN WORDPRESS VAPT AUTOMATOR${reset}"
 cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat
 
-# ===== USER INPUT =====
-echo -e "${yellow}ENTER TARGET (https://example.com)${reset}"
-read TARGET
+# ===== INPUT =====
+read -p "TARGET (https://example.com): " TARGET
+read -p "DIR WORDLIST [default]: " WORDLIST
+read -p "USER WORDLIST [default]: " USERLIST
+read -p "PASS WORDLIST [default]: " PASSLIST
+read -p "MAX THREADS [20]: " THREADS
+read -p "WPSCAN API TOKEN (optional): " APITOKEN
 
-echo -e "${yellow}ENTER DIRECTORY WORDLIST PATH${reset}"
-read WORDLIST
 WORDLIST=${WORDLIST:-/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt}
-
-echo -e "${yellow}ENTER USERNAME WORDLIST PATH${reset}"
-read USERLIST
 USERLIST=${USERLIST:-/usr/share/wordlists/seclists/Usernames/top-usernames-shortlist.txt}
-
-echo -e "${yellow}ENTER PASSWORD WORDLIST PATH${reset}"
-read PASSLIST
 PASSLIST=${PASSLIST:-/usr/share/wordlists/seclists/Passwords/Common-Credentials/10k-most-common.txt}
-
-echo -e "${yellow}ENTER MAX THREADS${reset}"
-read THREADS
 THREADS=${THREADS:-20}
 
-echo -e "${yellow}ENTER WPSCAN API TOKEN (optional)${reset}"
-read APITOKEN
-
 DOMAIN=$(echo "$TARGET" | sed 's~http[s]*://~~' | sed 's~/.*~~')
-
 OUTDIR="wp_scan_$(date +%F_%T)"
 mkdir -p "$OUTDIR"
 
 COUNT=0
 run() {
   COUNT=$((COUNT+1))
-  echo -e "${blue}[$COUNT] RUNNING:${reset} $1" | lolcat
+  echo -e "${blue}[$COUNT]${reset} $1" | lolcat
   eval "$1 < /dev/null" >> "$OUTDIR/output.log" 2>&1
 }
 
 # =========================
-# 1. BASIC FOOTPRINTING
+# 1. FOOTPRINT + WEB INFO
 # =========================
-echo "# ========================="
-echo "# 1. BASIC FOOTPRINTING"
-echo "# ========================="
 run "dig $DOMAIN"
 run "nslookup $DOMAIN"
 run "ping -c 4 $DOMAIN"
 run "traceroute $DOMAIN"
-
-# =========================
-# 2. WEB FINGERPRINTING
-# =========================
-echo "# ========================="
-echo "# 2. WEB FINGERPRINTING"
-echo "# ========================="
 run "curl -I $TARGET"
 run "whatweb $TARGET"
 
 # =========================
-# 3. NMAP NETWORK SCANNING
+# 2. NMAP (MERGED)
 # =========================
-echo "# ========================="
-echo "# 3. NMAP NETWORK SCANNING"
-echo "# ========================="
 run "nmap -p- $DOMAIN"
-run "nmap -p 80,443 -sC -sV $DOMAIN"
+run "nmap -p 80,443 -sC -sV \
+--script http-headers,http-enum,http-robots.txt,http-sitemap-generator,http-generator,\
+http-wordpress-enum,http-wordpress-users,http-wordpress-xmlrpc,http-config-backup,\
+ssl-cert,ssl-enum-ciphers $DOMAIN"
 
 # =========================
-# 4. WORDPRESS FILE CHECKS
+# 3. WORDPRESS FILE & ENDPOINT CHECKS (MERGED)
 # =========================
-echo "# ========================="
-echo "# 4. WORDPRESS FILE CHECKS"
-echo "# ========================="
-run "curl $TARGET/readme.html"
-run "curl $TARGET/wp-admin/"
+URLS=(
+readme.html wp-admin/ wp-login.php xmlrpc.php wp-json/
+wp-content/ wp-content/plugins/ wp-content/themes/ wp-content/uploads/
+wp-includes/ debug.log error.log wp-config.php~ wp-config.bak
+?author=1 ?author=2 author/admin/ backup/ site.zip db.sql
+feed/ comments/feed/
+)
+
+for u in "${URLS[@]}"; do
+  run "curl -s -o /dev/null -w \"%{http_code} $u\n\" $TARGET/$u"
+done
 
 # =========================
-# 5. DIRECTORY ENUMERATION
+# 4. DIRECTORY ENUM (FIXED)
 # =========================
-echo "# ========================="
-echo "# 5. DIRECTORY ENUMERATION"
-echo "# ========================="
-run "gobuster dir -u $TARGET -w $WORDLIST -t $THREADS"
 run "gobuster dir -u $TARGET -w $WORDLIST -t $THREADS -b 403"
 run "dirsearch -u $TARGET -w $WORDLIST -t $THREADS"
 
 # =========================
-# 6. URL & FILE CHECKS
+# 5. REST API ENUM (MERGED)
 # =========================
-echo "# ========================="
-echo "# 6. URL & FILE CHECKS"
-echo "# ========================="
-URLS=(
-wp-admin/
-wp-login.php
-wp-content/
-wp-content/plugins/
-wp-content/themes/
-wp-content/uploads/
-wp-includes/
-xmlrpc.php
-wp-json/
-wp-config.php~
-wp-config.bak
-debug.log
-?author=1
-?author=2
-author/admin/
-backup/
-site.zip
-db.sql
-wp-content/debug.log
-error.log
-feed/
-comments/feed/
-)
-for u in "${URLS[@]}"; do
-  run "curl $TARGET/$u"
-done
-
-# =========================
-# 7. REST API ENUM
-# =========================
-echo "# ========================="
-echo "# 7. REST API ENUM"
-echo "# ========================="
-run "curl $TARGET/wp-json/"
 run "curl $TARGET/wp-json/wp/v2/users"
 run "curl $TARGET/wp-json/wp/v2/posts"
 run "curl $TARGET/wp-json/wp/v2/media"
 
 # =========================
-# 8. WPSCAN BASIC ENUMERATION
+# 6. WPSCAN CORE + PLUGINS + THEMES (ONE CALL)
 # =========================
-echo "# ========================="
-echo "# 8. WPSCAN BASIC ENUMERATION"
-echo "# ========================="
-run "wpscan --url $TARGET --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --detection-mode aggressive --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate u --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate p --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate ap --plugins-detection aggressive --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate vp --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate t --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate vt --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate cb,dbe --ignore-main-redirect --no-update --force"
+[ -n "$APITOKEN" ] && run \
+"wpscan --url $TARGET \
+--api-token $APITOKEN \
+--enumerate vp,vt,cb,dbe,v \
+--plugins-detection aggressive \
+--themes-detection aggressive \
+--max-threads $THREADS \
+--random-user-agent \
+--no-update --force"
 
 # =========================
-# 9. XMLRPC CHECKS
+# 7. USER ENUM ONLY
 # =========================
-echo "# ========================="
-echo "# 9. XMLRPC CHECKS"
-echo "# ========================="
-run "curl -X POST $TARGET/xmlrpc.php"
-run "nmap -p 80,443 --script http-wordpress-xmlrpc,http-xmlrpc-brute $DOMAIN"
+run "wpscan --url $TARGET --enumerate u --no-update --force"
 
 # =========================
-# 10. NMAP WORDPRESS SCRIPTS
+# 8. BRUTE FORCE (SINGLE LOGIC)
 # =========================
-echo "# ========================="
-echo "# 10. NMAP WORDPRESS SCRIPTS"
-echo "# ========================="
-run "nmap -p 80,443 --script http-wordpress-users $DOMAIN"
-run "nmap -p 80,443 --script http-wordpress-enum,http-wordpress-users,http-wordpress-brute,http-config-backup,http-enum $DOMAIN"
+run "wpscan --url $TARGET \
+--usernames $USERLIST \
+--passwords $PASSLIST \
+--password-attack xmlrpc \
+--max-threads $THREADS \
+--no-update --force"
 
 # =========================
-# 11. BRUTE FORCE
+# 9. FINAL REPORT
 # =========================
-echo "# ========================="
-echo "# 11. BRUTE FORCE"
-echo "# ========================="
-run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --usernames $USERLIST --passwords $PASSLIST --password-attack xmlrpc --ignore-main-redirect --no-update --force"
+run "wpscan --url $TARGET -o $OUTDIR/wpscan.txt --no-update --force"
+run "wpscan --url $TARGET --format json -o $OUTDIR/wpscan.json --no-update --force"
 
-# =========================
-# 12. ADMIN PATHS
-# =========================
-echo "# ========================="
-echo "# 12. ADMIN PATHS"
-echo "# ========================="
-ADMINS=(
-wp-admin/plugin-editor.php
-wp-admin/theme-editor.php
-wp-admin/tools.php
-wp-admin/users.php
-)
-for a in "${ADMINS[@]}"; do
-  run "curl $TARGET/$a"
-done
-
-# =========================
-# 13. SSL + HTTP ENUM
-# =========================
-echo "# ========================="
-echo "# 13. SSL + HTTP ENUM"
-echo "# ========================="
-run "nmap -p 443 --script ssl-cert,ssl-enum-ciphers $DOMAIN"
-run "nmap -p 80,443 $DOMAIN"
-run "nmap -p 80,443 --script http-headers $DOMAIN"
-run "nmap -p 80,443 --script http-robots.txt $DOMAIN"
-run "nmap -p 80,443 --script http-sitemap-generator $DOMAIN"
-run "nmap -p 80,443 --script http-enum $DOMAIN"
-run "nmap -p 80,443 --script http-generator $DOMAIN"
-run "nmap -p 80,443 --script http-wordpress-users,http-wordpress-enum,http-config-backup,http-enum $DOMAIN"
-
-# =========================
-# 14. FINAL WPSCAN ENUM
-# =========================
-echo "# ========================="
-echo "# 14. FINAL WPSCAN ENUM"
-echo "# ========================="
-run "wpscan --url $TARGET --enumerate v --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate at --themes-detection aggressive --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate u,vp,vt --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --enumerate tt --ignore-main-redirect --no-update --force"
-
-[ -n "$APITOKEN" ] && run "wpscan --url $TARGET --api-token $APITOKEN --ignore-main-redirect --no-update --force"
-
-run "wpscan --url $TARGET -o $OUTDIR/wpscan.txt --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --format json -o $OUTDIR/wpscan.json --ignore-main-redirect --no-update --force"
-run "wpscan --url $TARGET --random-user-agent --disable-tls-checks --max-threads $THREADS --ignore-main-redirect --no-update --force"
-
-# =========================
-# SUMMARY
-# =========================
 echo -e "${green}TOTAL COMMANDS EXECUTED: $COUNT${reset}" | lolcat
 cowsay -f kiss SCAN COMPLETED | lolcat
