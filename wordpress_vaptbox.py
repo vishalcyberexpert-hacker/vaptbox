@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+import os
+import sys
+import time
+from datetime import datetime
+
+# ===== COLORS =====
+green = "\033[38;5;82m"
+yellow = "\033[0;33m"
+blue = "\033[38;5;51m"
+reset = "\033[0m"
+
+# ===== BANNER =====
+os.system("clear")
+os.system("toilet -f mono12 -F metal -W WORDPRESS | lolcat")
+os.system("toilet -f mono12 -F metal -W VAPTBOX | lolcat")
+print(f"{green}NEXT-GEN WORDPRESS VAPT AUTOMATOR{reset}")
+os.system("cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat")
+
+# ===== INPUT =====
+TARGET = input("TARGET (http/https): ").strip()
+WORDLIST = input("DIR WORDLIST [default]: ").strip()
+USERLIST = input("USER WORDLIST [default]: ").strip()
+PASSLIST = input("PASS WORDLIST [default]: ").strip()
+THREADS = input("MAX THREADS [20]: ").strip()
+APITOKEN = input("WPSCAN API TOKEN (optional): ").strip()
+
+WORDLIST = WORDLIST or "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+USERLIST = USERLIST or "/usr/share/wordlists/seclists/Usernames/top-usernames-shortlist.txt"
+PASSLIST = PASSLIST or "/usr/share/wordlists/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+THREADS = THREADS or "20"
+
+DOMAIN = TARGET.replace("http://", "").replace("https://", "").split("/")[0]
+
+OUTDIR = f"wp_scan_{datetime.now().strftime('%F_%H-%M-%S')}"
+os.makedirs(OUTDIR, exist_ok=True)
+LOGFILE = f"{OUTDIR}/output.log"
+
+COUNT = 0
+
+def run(cmd):
+    global COUNT
+    COUNT += 1
+    print(f"{blue}[{COUNT}]{reset} {cmd}")
+    os.system(f"{cmd} >> {LOGFILE} 2>&1")
+
+# =========================
+# 1. FOOTPRINT + WEB INFO
+# =========================
+run(f"dig {DOMAIN}")
+run(f"nslookup {DOMAIN}")
+run(f"ping -c 4 {DOMAIN}")
+run(f"traceroute {DOMAIN}")
+run(f"curl -I {TARGET}")
+run(f"whatweb {TARGET}")
+
+# =========================
+# 2. NMAP
+# =========================
+run(f"nmap -p- {DOMAIN}")
+run(
+    f"nmap -p 80,443 -sC -sV "
+    f"--script http-headers,http-enum,http-robots.txt,http-sitemap-generator,http-generator,"
+    f"http-wordpress-enum,http-wordpress-users,http-wordpress-xmlrpc,http-config-backup,"
+    f"ssl-cert,ssl-enum-ciphers {DOMAIN}"
+)
+
+# =========================
+# 3. WORDPRESS FILE CHECKS
+# =========================
+URLS = [
+    "readme.html", "wp-admin/", "wp-login.php", "xmlrpc.php", "wp-json/",
+    "wp-content/", "wp-content/plugins/", "wp-content/themes/",
+    "wp-content/uploads/", "wp-includes/", "debug.log", "error.log",
+    "wp-config.php~", "wp-config.bak", "?author=1", "?author=2",
+    "author/admin/", "backup/", "site.zip", "db.sql",
+    "feed/", "comments/feed/"
+]
+
+for u in URLS:
+    run(f'curl -s -o /dev/null -w "%{{http_code}} {u}\\n" {TARGET}/{u}')
+
+# =========================
+# 4. DIRECTORY ENUM (FIXED)
+# =========================
+run(
+    f"gobuster dir -u {TARGET} -w {WORDLIST} -t {THREADS} "
+    f"-s 200,204,301,302,307,401,403"
+)
+
+run(f"dirsearch -u {TARGET} -w {WORDLIST} -t {THREADS}")
+
+# =========================
+# 5. REST API ENUM (KEPT)
+# =========================
+run(f"curl {TARGET}/wp-json/wp/v2/users")
+run(f"curl {TARGET}/wp-json/wp/v2/posts")
+run(f"curl {TARGET}/wp-json/wp/v2/media")
+
+# =========================
+# 6. WPSCAN FULL ENUM
+# =========================
+if APITOKEN:
+    run(
+        f"wpscan --url {TARGET} "
+        f"--api-token {APITOKEN} "
+        f"--enumerate vp,vt,cb,dbe,v "
+        f"--plugins-detection aggressive "
+        f"--themes-detection aggressive "
+        f"--max-threads {THREADS} "
+        f"--random-user-agent "
+        f"--no-update --force"
+    )
+
+# =========================
+# 7. USER ENUM
+# =========================
+run(f"wpscan --url {TARGET} --enumerate u --no-update --force")
+
+# =========================
+# 8. BRUTE FORCE (DUAL MODE)
+# =========================
+# XMLRPC (KEPT)
+run(
+    f"wpscan --url {TARGET} "
+    f"--usernames {USERLIST} "
+    f"--passwords {PASSLIST} "
+    f"--password-attack xmlrpc "
+    f"--max-threads {THREADS} "
+    f"--no-update --force"
+)
+
+# CLASSIC LOGIN (FALLBACK – ADDED)
+run(
+    f"wpscan --url {TARGET} "
+    f"--usernames {USERLIST} "
+    f"--passwords {PASSLIST} "
+    f"--max-threads {THREADS} "
+    f"--no-update --force"
+)
+
+# =========================
+# 9. FINAL REPORT
+# =========================
+run(f"wpscan --url {TARGET} -o {OUTDIR}/wpscan.txt --no-update --force")
+run(f"wpscan --url {TARGET} --format json -o {OUTDIR}/wpscan.json --no-update --force")
+
+print(f"\n{green}TOTAL COMMANDS EXECUTED: {COUNT}{reset}")
+os.system("cowsay -f kiss SCAN COMPLETED | lolcat")
