@@ -7,7 +7,7 @@ from datetime import datetime
 import subprocess
 
 # =========================
-# FULL-SCREEN INTRO ANIMATION (ADDED – 10s)
+# FULL-SCREEN INTRO ANIMATION (10s)
 # =========================
 w = os.get_terminal_size().columns
 h = os.get_terminal_size().lines
@@ -33,7 +33,7 @@ while time.time() - start < 10:
     time.sleep(0.05)
 
 # =========================
-# COLORS (for internal use)
+# COLORS
 # =========================
 green = "\033[38;5;82m"
 yellow = "\033[38;5;226m"
@@ -51,7 +51,7 @@ os.system(f"echo 'NEXT-GEN WORDPRESS VAPT AUTOMATOR' | lolcat")
 os.system("cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat")
 
 # =========================
-# INPUT (all prompts via lolcat)
+# INPUT (via lolcat)
 # =========================
 def lolcat_input(prompt):
     os.system(f"echo '{prompt}' | lolcat")
@@ -82,9 +82,7 @@ COUNT = 0
 def run(cmd):
     global COUNT
     COUNT += 1
-    # Show command being run in lolcat
     os.system(f"echo '[{COUNT}] Running: {cmd}' | lolcat")
-    # Run the command, suppress stdout/stderr, but log it
     with open(LOGFILE, "a") as logf:
         subprocess.run(cmd, shell=True, stdout=logf, stderr=logf)
     os.system(f"echo '--------------------------------------------------------------------------------' | lolcat")
@@ -138,12 +136,13 @@ run(f"curl {TARGET}/wp-json/wp/v2/posts")
 run(f"curl {TARGET}/wp-json/wp/v2/media")
 
 # =========================
-# 6. WPSCAN FULL ENUM
+# 6. WPSCAN FULL ENUM (ignore redirects)
 # =========================
 if APITOKEN:
     run(
         f"wpscan --url {TARGET} "
         f"--api-token {APITOKEN} "
+        f"--ignore-main-redirect "
         f"--enumerate vp,vt,cb,dbe,v "
         f"--plugins-detection aggressive "
         f"--themes-detection aggressive "
@@ -155,13 +154,13 @@ if APITOKEN:
 # =========================
 # 7. USER ENUM
 # =========================
-run(f"wpscan --url {TARGET} --enumerate u --no-update --force")
+run(f"wpscan --url {TARGET} --ignore-main-redirect --enumerate u --no-update --force")
 
 # =========================
 # 8. BRUTE FORCE (DUAL MODE)
 # =========================
 run(
-    f"wpscan --url {TARGET} "
+    f"wpscan --url {TARGET} --ignore-main-redirect "
     f"--usernames {USERLIST} "
     f"--passwords {PASSLIST} "
     f"--password-attack xmlrpc "
@@ -170,7 +169,7 @@ run(
 )
 
 run(
-    f"wpscan --url {TARGET} "
+    f"wpscan --url {TARGET} --ignore-main-redirect "
     f"--usernames {USERLIST} "
     f"--passwords {PASSLIST} "
     f"--max-threads {THREADS} "
@@ -180,8 +179,8 @@ run(
 # =========================
 # 9. FINAL REPORT
 # =========================
-run(f"wpscan --url {TARGET} -o {OUTDIR}/wpscan.txt --no-update --force")
-run(f"wpscan --url {TARGET} --format json -o {OUTDIR}/wpscan.json --no-update --force")
+run(f"wpscan --url {TARGET} --ignore-main-redirect -o {OUTDIR}/wpscan.txt --no-update --force")
+run(f"wpscan --url {TARGET} --ignore-main-redirect --format json -o {OUTDIR}/wpscan.json --no-update --force")
 
 os.system(f"echo '\nTOTAL COMMANDS EXECUTED: {COUNT}' | lolcat")
 os.system("cowsay -f kiss SCAN COMPLETED | lolcat")
