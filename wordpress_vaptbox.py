@@ -43,7 +43,8 @@ reset = "\033[0m"
 # ===== BANNER =====
 # =========================
 os.system("clear")
-os.system("toilet -f mono12 -F metal -W WORDPRESS | lolcat")
+os.system("toilet -f mono12 -F metal -W WORD - | lolcat")
+os.system("toilet -f mono12 -F metal -W PRESS | lolcat")
 os.system("toilet -f mono12 -F metal -W VAPTBOX | lolcat")
 print(f"{green}NEXT-GEN WORDPRESS VAPT AUTOMATOR{reset}")
 os.system("cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat")
