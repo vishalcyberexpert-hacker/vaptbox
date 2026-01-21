@@ -56,7 +56,7 @@ TARGET = input("TARGET (http/https): ").strip()
 WORDLIST = input("DIR WORDLIST [default]: ").strip()
 USERLIST = input("USER WORDLIST [default]: ").strip()
 PASSLIST = input("PASS WORDLIST [default]: ").strip()
-THREADS = input("MAX THREADS [20]: ").strip()
+THREADS = input("MAX THREADS: ").strip()
 APITOKEN = input("WPSCAN API TOKEN (optional): ").strip()
 
 WORDLIST = WORDLIST or "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
