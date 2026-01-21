@@ -4,6 +4,7 @@ import sys
 import time
 import random
 from datetime import datetime
+import subprocess
 
 # =========================
 # FULL-SCREEN INTRO ANIMATION (ADDED – 10s)
@@ -32,51 +33,61 @@ while time.time() - start < 10:
     time.sleep(0.05)
 
 # =========================
-# ===== COLORS =====
+# COLORS (for internal use)
 # =========================
 green = "\033[38;5;82m"
-yellow = "\033[0;33m"
+yellow = "\033[38;5;226m"
 blue = "\033[38;5;51m"
 reset = "\033[0m"
 
 # =========================
-# ===== BANNER =====
+# BANNER
 # =========================
 os.system("clear")
-os.system("toilet -f mono12 -F metal -W WORD - | lolcat")
+os.system("toilet -f mono12 -F metal -W WORD | lolcat")
 os.system("toilet -f mono12 -F metal -W PRESS | lolcat")
 os.system("toilet -f mono12 -F metal -W VAPTBOX | lolcat")
-print(f"{green}NEXT-GEN WORDPRESS VAPT AUTOMATOR{reset}")
+os.system(f"echo 'NEXT-GEN WORDPRESS VAPT AUTOMATOR' | lolcat")
 os.system("cowsay -f dragon-and-cow vishal.cyberexpert@gmail.com | lolcat")
 
 # =========================
-# ===== INPUT =====
+# INPUT (all prompts via lolcat)
 # =========================
-TARGET = input("TARGET (http/https): ").strip()
-WORDLIST = input("DIR WORDLIST [default]: ").strip()
-USERLIST = input("USER WORDLIST [default]: ").strip()
-PASSLIST = input("PASS WORDLIST [default]: ").strip()
-THREADS = input("MAX THREADS: ").strip()
-APITOKEN = input("WPSCAN API TOKEN (optional): ").strip()
+def lolcat_input(prompt):
+    os.system(f"echo '{prompt}' | lolcat")
+    return input().strip()
+
+TARGET = lolcat_input("TARGET (http/https):")
+WORDLIST = lolcat_input("DIR WORDLIST [default]:")
+USERLIST = lolcat_input("USER WORDLIST [default]:")
+PASSLIST = lolcat_input("PASS WORDLIST [default]:")
+THREADS = lolcat_input("MAX THREADS:")
+APITOKEN = lolcat_input("WPSCAN API TOKEN (optional):")
 
 WORDLIST = WORDLIST or "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
 USERLIST = USERLIST or "/usr/share/wordlists/seclists/Usernames/top-usernames-shortlist.txt"
-PASSLIST = PASSLIST or "/usr/share/wordlists/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+PASSLIST = PASSLIST or "/usr/share/wordlists/rockyou.txt"
 THREADS = THREADS or "20"
 
 DOMAIN = TARGET.replace("http://", "").replace("https://", "").split("/")[0]
-
 OUTDIR = f"wp_scan_{datetime.now().strftime('%F_%H-%M-%S')}"
 os.makedirs(OUTDIR, exist_ok=True)
 LOGFILE = f"{OUTDIR}/output.log"
 
 COUNT = 0
 
+# =========================
+# RUN FUNCTION (only show command in lolcat, suppress output)
+# =========================
 def run(cmd):
     global COUNT
     COUNT += 1
-    print(f"{blue}[{COUNT}]{reset} {cmd}")
-    os.system(f"{cmd} >> {LOGFILE} 2>&1")
+    # Show command being run in lolcat
+    os.system(f"echo '[{COUNT}] Running: {cmd}' | lolcat")
+    # Run the command, suppress stdout/stderr, but log it
+    with open(LOGFILE, "a") as logf:
+        subprocess.run(cmd, shell=True, stdout=logf, stderr=logf)
+    os.system(f"echo '--------------------------------------------------------------------------------' | lolcat")
 
 # =========================
 # 1. FOOTPRINT + WEB INFO
@@ -95,8 +106,7 @@ run(f"nmap -p- {DOMAIN}")
 run(
     f"nmap -p 80,443 -sC -sV "
     f"--script http-headers,http-enum,http-robots.txt,http-sitemap-generator,http-generator,"
-    f"http-wordpress-enum,http-wordpress-users,http-wordpress-xmlrpc,http-config-backup,"
-    f"ssl-cert,ssl-enum-ciphers {DOMAIN}"
+    f"http-wordpress-enum,http-wordpress-users,http-config-backup,ssl-cert,ssl-enum-ciphers {DOMAIN} || true"
 )
 
 # =========================
@@ -117,11 +127,7 @@ for u in URLS:
 # =========================
 # 4. DIRECTORY ENUM
 # =========================
-run(
-    f"gobuster dir -u {TARGET} -w {WORDLIST} -t {THREADS} "
-    f"-s 200,204,301,302,307,401,403"
-)
-
+run(f"gobuster dir -u {TARGET} -w {WORDLIST} -t {THREADS} -s 200,204,301,302,307,401,403")
 run(f"dirsearch -u {TARGET} -w {WORDLIST} -t {THREADS}")
 
 # =========================
@@ -177,5 +183,5 @@ run(
 run(f"wpscan --url {TARGET} -o {OUTDIR}/wpscan.txt --no-update --force")
 run(f"wpscan --url {TARGET} --format json -o {OUTDIR}/wpscan.json --no-update --force")
 
-print(f"\n{green}TOTAL COMMANDS EXECUTED: {COUNT}{reset}")
+os.system(f"echo '\nTOTAL COMMANDS EXECUTED: {COUNT}' | lolcat")
 os.system("cowsay -f kiss SCAN COMPLETED | lolcat")
